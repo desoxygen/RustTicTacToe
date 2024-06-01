@@ -13,7 +13,7 @@ This project is an implementation of the "Tic-Tac-Toe" game in Rust. The project
    ```bash
    cargo build
    ```
-## Also
+# Also
    ```bash
    cargo run
    ```
