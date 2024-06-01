@@ -22,13 +22,20 @@ fn annulate(board: &mut Vec<Vec<char>>) {
 }
 
 fn print_board(board: &Vec<Vec<char>>) {
-    for row in board.iter() {
-        for cell in row.iter() {
+    for (i, row) in board.iter().enumerate() {
+        for (j, cell) in row.iter().enumerate() {
             print!("{} ", cell);
+            if j < 2 {
+                print!("| ");
+            }
         }
         println!();
+        if i < 2 {
+            println!("---------");
+        }
     }
 }
+
 
 fn log_move(writer: &mut Writer<File>, player: &str, row: usize, column: usize) -> Result<(), Box<dyn Error>> {
     writer.write_record(&[player, &row.to_string(), &column.to_string()])?;
