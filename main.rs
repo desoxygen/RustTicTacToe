@@ -1,15 +1,49 @@
-use std::error::Error;
-use std::fs::File;
+use serde::{Deserialize, Serialize};
+use std::fs::{self, File};
 use std::io::{self, Write};
-use csv::Writer;
+use std::path::Path;
 
-fn check_winner(current_player: i32, player1: &mut i32, player2: &mut i32) {
+const WINS_FILE: &str = "wins.json";
+const INVALID_INPUT_MSG: &str = "Invalid input! Please enter numbers between 0 and 2.";
+const OCCUPIED_MSG: &str = "Occupied. Please choose another one.";
+const PLAYER_1_SYMBOL: char = 'O';
+const PLAYER_2_SYMBOL: char = 'X';
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Wins {
+    X: i32,
+    O: i32,
+}
+
+impl Wins {
+    fn new() -> Self {
+        Wins { X: 0, O: 0 }
+    }
+}
+
+fn read_wins_from_file() -> Wins {
+    if Path::new(WINS_FILE).exists() {
+        let data = fs::read_to_string(WINS_FILE).expect("Unable to read file");
+        serde_json::from_str(&data).expect("Unable to parse JSON")
+    } else {
+        Wins::new()
+    }
+}
+
+fn write_wins_to_file(wins: &Wins) {
+    let data = serde_json::to_string(wins).expect("Unable to serialize data");
+    fs::write(WINS_FILE, data).expect("Unable to write file");
+}
+
+fn check_winner(current_player: i32, player1: &mut i32, player2: &mut i32, wins: &mut Wins) {
     if current_player % 2 == 0 {
         println!("Player 2 wins!");
         *player2 += 1;
+        wins.X += 1;
     } else {
         println!("Player 1 wins!");
         *player1 += 1;
+        wins.O += 1;
     }
 }
 
@@ -36,23 +70,12 @@ fn print_board(board: &Vec<Vec<char>>) {
     }
 }
 
-
-fn log_move(writer: &mut Writer<File>, player: &str, row: usize, column: usize) -> Result<(), Box<dyn Error>> {
-    writer.write_record(&[player, &row.to_string(), &column.to_string()])?;
-    writer.flush()?;
-    Ok(())
+fn print_score(player1: i32, player2: i32) {
+    println!("Player 1: {} | Player 2: {}", player1, player2);
 }
 
-fn log_score(writer: &mut Writer<File>, player1_score: i32, player2_score: i32) -> Result<(), Box<dyn Error>> {
-    writer.write_record(&["Scores", &player1_score.to_string(), &player2_score.to_string()])?;
-    writer.flush()?;
-    Ok(())
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let file = File::create("game_log.csv")?;
-    let mut writer = Writer::from_writer(file);
-
+fn main() {
+    let mut wins = read_wins_from_file();
     let mut player1 = 0;
     let mut player2 = 0;
     let mut board = vec![vec![' '; 3]; 3];
@@ -70,12 +93,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(value) => match value.parse() {
                 Ok(num) => num,
                 Err(_) => {
-                    println!("Invalid input! Please enter numbers between 0 and 2.");
+                    println!("{}", INVALID_INPUT_MSG);
                     continue;
                 }
             },
             None => {
-                println!("Invalid input! Please enter numbers between 0 and 2.");
+                println!("{}", INVALID_INPUT_MSG);
                 continue;
             }
         };
@@ -84,33 +107,31 @@ fn main() -> Result<(), Box<dyn Error>> {
             Some(value) => match value.parse() {
                 Ok(num) => num,
                 Err(_) => {
-                    println!("Invalid input! Please enter numbers between 0 and 2.");
+                    println!("{}", INVALID_INPUT_MSG);
                     continue;
                 }
             },
             None => {
-                println!("Invalid input! Please enter numbers between 0 and 2.");
+                println!("{}", INVALID_INPUT_MSG);
                 continue;
             }
         };
 
         if row >= 3 || column >= 3 {
-            println!("Invalid input! Please enter numbers between 0 and 2.");
+            println!("{}", INVALID_INPUT_MSG);
             continue;
         }
 
         if board[row][column] != ' ' {
-            println!("Occupied. Please choose another one.");
+            println!("{}", OCCUPIED_MSG);
             continue;
         }
 
         if current_player % 2 == 0 {
-            board[row][column] = 'X';
+            board[row][column] = PLAYER_2_SYMBOL;
         } else {
-            board[row][column] = 'O';
+            board[row][column] = PLAYER_1_SYMBOL;
         }
-
-        log_move(&mut writer, if current_player % 2 == 0 { "Player 2" } else { "Player 1" }, row, column)?;
 
         print_board(&board);
 
@@ -118,11 +139,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             if (board[i][0] == board[i][1] && board[i][1] == board[i][2] && board[i][0] != ' ')
                 || (board[0][i] == board[1][i] && board[1][i] == board[2][i] && board[0][i] != ' ')
             {
-                check_winner(current_player, &mut player1, &mut player2);
-                log_score(&mut writer, player1, player2)?;
-                println!("Player 1: {} | Player 2: {}", player1, player2);
+                check_winner(current_player, &mut player1, &mut player2, &mut wins);
+                print_score(player1, player2);
                 annulate(&mut board);
                 current_player = 1;
+                write_wins_to_file(&wins);
                 continue;
             }
         }
@@ -130,11 +151,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         if (board[0][0] == board[1][1] && board[1][1] == board[2][2] && board[0][0] != ' ')
             || (board[0][2] == board[1][1] && board[1][1] == board[2][0] && board[0][2] != ' ')
         {
-            check_winner(current_player, &mut player1, &mut player2);
-            log_score(&mut writer, player1, player2)?;
-            println!("Player 1: {} | Player 2: {}", player1, player2);
+            check_winner(current_player, &mut player1, &mut player2, &mut wins);
+            print_score(player1, player2);
             annulate(&mut board);
             current_player = 1;
+            write_wins_to_file(&wins);
             continue;
         }
 
@@ -148,7 +169,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         if draw {
             println!("Draw!");
-            log_score(&mut writer, player1, player2)?;
             annulate(&mut board);
             current_player = 1;
             continue;
