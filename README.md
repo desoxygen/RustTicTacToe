@@ -14,9 +14,9 @@ This project is an implementation of the "Tic-Tac-Toe" game in Rust. The project
    cargo build
    ```
 # Also
-   ```bash
-   cargo run
-   ```
+         ```bash
+         cargo run
+         ```
 ## Usage
    After compilation, execute the following command to start the game:
    ```bash
