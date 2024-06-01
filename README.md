@@ -1,5 +1,5 @@
 # RustTicTacToe
-### This is the first and last project of our college entirely written in Rust.
+### This is the first and last project of our college entirely written on Rust.
 
 This project is an implementation of the "Tic-Tac-Toe" game in Rust. The project does not use any additional tools or libraries.
 
